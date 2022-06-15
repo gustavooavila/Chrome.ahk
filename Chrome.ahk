@@ -1,4 +1,6 @@
-﻿class Chrome
+﻿#Include %A_LineFile%\..\lib\Autohotkey-Websocket-Client\libs\WSSession.ahk
+
+class Chrome
 {
 	static DebugPort := 9222
 	
@@ -196,10 +198,16 @@
 			; TODO: Throw exception on invalid objects
 			if IsObject(wsurl)
 				wsurl := wsurl.webSocketDebuggerUrl
-			
+                
 			wsurl := StrReplace(wsurl, "localhost", "127.0.0.1")
-			this.ws := {"base": this.WebSocket, "_Event": this.Event, "Parent": this}
-			this.ws.__New(wsurl)
+            RegExMatch(wsurl, "O)://(.*?):(\d+)/(.*)" , regexResult)
+            
+            wsdomain := regexResult.Value(1)
+            wsport := regexResult.Value(2)
+            wsurl := regexResult.Value(3)
+            
+            this.ws := {"base": WSSession, "OnTEXT": this.WsOnMessage, "OnCLOSE": this.WsOnClose, "OnCONNECT": this.WsOnConnect, "Parent": this}
+            this.ws.__New(wsdomain, wsport, "/" . wsurl)
 			
 			while !this.Connected
 				Sleep, 50
@@ -233,7 +241,7 @@
 			; Use a temporary variable for ID in case more calls are made
 			; before we receive a response.
 			ID := this.ID += 1
-			this.ws.Send(Chrome.JSON.Dump({"id": ID
+			this.ws.SendText(Chrome.JSON.Dump({"id": ID
 			, "params": Params ? Params : {}
 			, "method": DomainAndMethod}))
 			
@@ -294,42 +302,41 @@
 				Sleep, Interval
 		}
 		
-		/*
-			Internal function triggered when the script receives a message on
-			the WebSocket connected to the page.
-		*/
-		Event(EventName, Event)
-		{
-			; If it was called from the WebSocket adjust the class context
-			if this.Parent
-				this := this.Parent
-			
-			; TODO: Handle Error events
-			if (EventName == "Open")
-			{
-				this.Connected := True
-				BoundKeepAlive := this.BoundKeepAlive
-				SetTimer, %BoundKeepAlive%, 15000
-			}
-			else if (EventName == "Message")
-			{
-				data := Chrome.JSON.Load(Event.data)
-				
-				; Run the callback routine
-				fnCallback := this.fnCallback
-				if (newData := %fnCallback%(data))
-					data := newData
-				
-				if this.responses.HasKey(data.ID)
-					this.responses[data.ID] := data
-			}
-			else if (EventName == "Close")
-			{
-				this.Disconnect()
-				fnClose := this.fnClose
-				%fnClose%(this)
-			}
-		}
+		 WsOnMessage(event)
+        {
+            if this.Parent {
+                this := this.Parent
+            }
+            data := Chrome.JSON.Load(event.data.PayloadText)
+            
+            ; Run the callback routine
+            fnCallback := this.fnCallback
+            if (newData := %fnCallback%(data))
+            data := newData
+            
+            if this.responses.HasKey(data.ID)
+            this.responses[data.ID] := data
+        }
+        
+        WsOnClose() 
+        {
+            if this.Parent {
+                this := this.Parent
+            }
+            this.Disconnect()
+            fnClose := this.fnClose
+            %fnClose%(this)
+        }
+        
+        WsOnConnect() 
+        {
+            if this.Parent {
+                this := this.Parent
+            }
+            this.Connected := True
+            BoundKeepAlive := this.BoundKeepAlive
+            SetTimer, %BoundKeepAlive%, 15000
+        }
 		
 		/*
 			Disconnect from the page's debug interface, allowing the instance
@@ -351,8 +358,6 @@
 			SetTimer, %BoundKeepAlive%, Delete
 			this.Delete("BoundKeepAlive")
 		}
-		
-		#Include %A_LineFile%\..\lib\WebSocket.ahk\WebSocket.ahk
 	}
 	
 	#Include %A_LineFile%\..\lib\cJson.ahk\Dist\JSON.ahk
