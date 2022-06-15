@@ -118,7 +118,7 @@
 		http := ComObjCreate("WinHttp.WinHttpRequest.5.1")
 		http.open("GET", "http://127.0.0.1:" this.DebugPort "/json")
 		http.send()
-		return this.Jxon_Load(http.responseText)
+		return Chrome.JSON.Load(http.responseText)
 	}
 	
 	/*
@@ -217,7 +217,7 @@
 			Params - An associative array of parameters to be provided to the
 				endpoint. For example:
 				PageInst.Call("Page.printToPDF", {"scale": 0.5 ; Numeric Value
-					, "landscape": Chrome.Jxon_True() ; Boolean Value
+					, "landscape": Chrome.JSON.True() ; Boolean Value
 					, "pageRanges: "1-5, 8, 11-13"}) ; String value
 				PageInst.Call("Page.navigate", {"url": "https://autohotkey.com/"})
 			
@@ -233,7 +233,7 @@
 			; Use a temporary variable for ID in case more calls are made
 			; before we receive a response.
 			ID := this.ID += 1
-			this.ws.Send(Chrome.Jxon_Dump({"id": ID
+			this.ws.Send(Chrome.JSON.Dump({"id": ID
 			, "params": Params ? Params : {}
 			, "method": DomainAndMethod}))
 			
@@ -248,7 +248,7 @@
 			; Get the response, check if it's an error
 			response := this.responses.Delete(ID)
 			if (response.error)
-				throw Exception("Chrome indicated error in response",, Chrome.Jxon_Dump(response.error))
+				throw Exception("Chrome indicated error in response",, Chrome.JSON.Dump(response.error))
 			
 			return response.result
 		}
@@ -266,17 +266,17 @@
 			{
 				"expression": JS,
 				"objectGroup": "console",
-				"includeCommandLineAPI": Chrome.Jxon_True(),
-				"silent": Chrome.Jxon_False(),
-				"returnByValue": Chrome.Jxon_False(),
-				"userGesture": Chrome.Jxon_True(),
-				"awaitPromise": Chrome.Jxon_False()
+				"includeCommandLineAPI": Chrome.JSON.True(),
+				"silent": Chrome.JSON.False(),
+				"returnByValue": Chrome.JSON.False(),
+				"userGesture": Chrome.JSON.True(),
+				"awaitPromise": Chrome.JSON.False()
 			}
 			))
 			
 			if (response.exceptionDetails)
 				throw Exception(response.result.description, -1
-					, Chrome.Jxon_Dump({"Code": JS
+					, Chrome.JSON.Dump({"Code": JS
 					, "exceptionDetails": response.exceptionDetails}))
 			
 			return response.result
@@ -313,7 +313,7 @@
 			}
 			else if (EventName == "Message")
 			{
-				data := Chrome.Jxon_Load(Event.data)
+				data := Chrome.JSON.Load(Event.data)
 				
 				; Run the callback routine
 				fnCallback := this.fnCallback
@@ -355,5 +355,5 @@
 		#Include %A_LineFile%\..\lib\WebSocket.ahk\WebSocket.ahk
 	}
 	
-	#Include %A_LineFile%\..\lib\AutoHotkey-JSON\Jxon.ahk
+	#Include %A_LineFile%\..\lib\cJson.ahk\Dist\JSON.ahk
 }
