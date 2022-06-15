@@ -241,9 +241,11 @@ class Chrome
 			; Use a temporary variable for ID in case more calls are made
 			; before we receive a response.
 			ID := this.ID += 1
-			this.ws.SendText(Chrome.JSON.Dump({"id": ID
-			, "params": Params ? Params : {}
-			, "method": DomainAndMethod}))
+            
+            toSend := Chrome.JSON.Dump({"id": ID, "params": Params ? Params : {}, "method": DomainAndMethod})
+            toSend := StrReplace(toSend, """params"": []", """params"": {}") ; workaround minor cJson bug
+            
+			this.ws.SendText(toSend)
 			
 			if !WaitForResponse
 				return
@@ -307,7 +309,7 @@ class Chrome
             if this.Parent {
                 this := this.Parent
             }
-            data := Chrome.JSON.Load(event.data.PayloadText)
+            data := Chrome.JSON.Load(event.PayloadText)
             
             ; Run the callback routine
             fnCallback := this.fnCallback
